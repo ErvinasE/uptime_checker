@@ -10,7 +10,10 @@ import (
 	"github.com/ervinas/server_uptime_checker/internal/models"
 )
 
-const defaultTimeout = 10 * time.Second
+const defaultTimeout = 20 * time.Second
+
+// browserUserAgent mimics a normal browser so bot filters are less likely to block us.
+const browserUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
 // Result holds the outcome of a single HTTP probe.
 type Result struct {
@@ -24,12 +27,11 @@ type Checker struct {
 	client *http.Client
 }
 
-// New creates a Checker with a 10-second request timeout.
+// New creates a Checker with a 20-second request timeout.
 func New() *Checker {
 	return &Checker{
 		client: &http.Client{
 			Timeout: defaultTimeout,
-			// Do not follow redirects beyond a reasonable limit.
 			CheckRedirect: func(req *http.Request, via []*http.Request) error {
 				if len(via) >= 5 {
 					return fmt.Errorf("too many redirects")
@@ -40,7 +42,9 @@ func New() *Checker {
 	}
 }
 
-// Check performs a GET request and treats 2xx/3xx as up.
+// Check performs a GET request. The site is considered up when the server
+// responds with any HTTP status below 500. Many popular sites return 403 to
+// automated clients even when they are online for real users.
 func (c *Checker) Check(ctx context.Context, url string) Result {
 	start := time.Now()
 
@@ -48,7 +52,9 @@ func (c *Checker) Check(ctx context.Context, url string) Result {
 	if err != nil {
 		return downResult(err.Error())
 	}
-	req.Header.Set("User-Agent", "UptimeMonitor/1.0")
+	req.Header.Set("User-Agent", browserUserAgent)
+	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
 
 	resp, err := c.client.Do(req)
 	elapsed := int(time.Since(start).Milliseconds())
@@ -59,7 +65,7 @@ func (c *Checker) Check(ctx context.Context, url string) Result {
 	defer resp.Body.Close()
 	_, _ = io.Copy(io.Discard, resp.Body)
 
-	if resp.StatusCode >= 200 && resp.StatusCode < 400 {
+	if resp.StatusCode < 500 {
 		return Result{
 			Status:         models.StatusUp,
 			ResponseTimeMs: &elapsed,
