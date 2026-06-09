@@ -67,3 +67,4 @@ go test ./...
 2. Confirm the API is up: `curl http://localhost:8080/health`
 3. Check app logs: `docker compose logs app`
 4. Inside Docker, the frontend must call `http://app:8080` (not `localhost:8080`)
+# uptime_checker
