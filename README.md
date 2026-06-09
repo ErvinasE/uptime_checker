@@ -59,6 +59,10 @@ NEXT_PUBLIC_API_URL=http://localhost:8080 npm run dev
 go test ./...
 ```
 
+## How uptime is determined
+
+A site is marked **up** when the server responds with any HTTP status below 500 (including 403). Many popular sites block automated clients with bot protection even when they are online in a browser. A **down** result means a timeout, connection error, or HTTP 5xx.
+
 ## Troubleshooting
 
 **"Could not reach the API" on the home page**

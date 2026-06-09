@@ -43,6 +43,20 @@ func TestCheckDownOnServerError(t *testing.T) {
 	}
 }
 
+func TestCheckUpOnForbidden(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+	}))
+	defer server.Close()
+
+	c := New()
+	result := c.Check(context.Background(), server.URL)
+
+	if result.Status != models.StatusUp {
+		t.Fatalf("expected up for 403 bot protection, got %s", result.Status)
+	}
+}
+
 func TestCheckDownOnInvalidURL(t *testing.T) {
 	c := New()
 	result := c.Check(context.Background(), "http://localhost:1")
