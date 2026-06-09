@@ -10,9 +10,6 @@ export default async function HomePage() {
   } catch {
     return (
       <div className="container">
-        <header>
-          <h1>Server Uptime Checker</h1>
-        </header>
         <p className="empty">Could not reach the API. Is the backend running?</p>
       </div>
     );
@@ -25,10 +22,7 @@ export default async function HomePage() {
 
   return (
     <div className="container">
-      <header>
-        <h1>Server Uptime Checker</h1>
-        <p>Status of {websites.length} popular websites</p>
-      </header>
+      <p className="page-subtitle">Status of {websites.length} popular websites</p>
 
       <section className="section">
         <h2>Currently Up ({up.length})</h2>
