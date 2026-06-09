@@ -1,0 +1,59 @@
+services:
+  mysql:
+    image: mysql:8
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-uptime}
+      MYSQL_USER: ${MYSQL_USER:-uptime}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-uptimepassword}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-rootpassword}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: ${MYSQL_USER:-uptime}
+      DB_PASSWORD: ${MYSQL_PASSWORD:-uptimepassword}
+      DB_NAME: ${MYSQL_DATABASE:-uptime}
+      APP_PORT: 8080
+      CHECK_INTERVAL_MINUTES: ${CHECK_INTERVAL_MINUTES:-144}
+      CHECK_RETENTION_DAYS: ${CHECK_RETENTION_DAYS:-7}
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8080/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        API_URL: http://app:8080
+    environment:
+      API_URL: http://app:8080
+    ports:
+      - "3000:3000"
+    depends_on:
+      app:
+        condition: service_healthy
+
+volumes:
+  mysql_data:
