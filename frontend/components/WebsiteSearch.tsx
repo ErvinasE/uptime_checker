@@ -6,8 +6,8 @@ import type { Website } from "@/lib/api";
 import { filterWebsites } from "@/lib/search";
 import { StatusBadge } from "./StatusBadge";
 
-const CLIENT_API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+// Browser calls the same-origin API proxy (see app/api/[...path]/route.ts).
+const CLIENT_API_BASE = "/api";
 
 export function WebsiteSearch() {
   const router = useRouter();
@@ -17,7 +17,7 @@ export function WebsiteSearch() {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    fetch(`${CLIENT_API_URL}/websites`, { cache: "no-store" })
+    fetch(`${CLIENT_API_BASE}/websites`, { cache: "no-store" })
       .then((res) => {
         if (!res.ok) throw new Error("fetch failed");
         return res.json() as Promise<Website[]>;

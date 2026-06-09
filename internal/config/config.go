@@ -36,7 +36,8 @@ func Load() Config {
 		DBUser:               getEnv("DB_USER", "uptime"),
 		DBPassword:           getEnv("DB_PASSWORD", "uptimepassword"),
 		DBName:               getEnv("DB_NAME", "uptime"),
-		AppPort:              getEnv("APP_PORT", "8080"),
+		// PORT is set by Railway, Render, and similar hosts.
+		AppPort:              getEnv("PORT", getEnv("APP_PORT", "8080")),
 		CheckIntervalMinutes: interval,
 		CheckRetentionDays:   retention,
 	}
