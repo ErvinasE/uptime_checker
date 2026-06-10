@@ -3,6 +3,7 @@ package api
 import (
 	"log"
 	"net/http"
+	"path"
 	"strings"
 )
 
@@ -43,11 +44,13 @@ func NewRouter(h *Handler) http.Handler {
 		h.ListWebsites(w, r)
 	})
 	mux.HandleFunc("/websites/", func(w http.ResponseWriter, r *http.Request) {
-		path := strings.Trim(r.URL.Path, "/")
-		parts := strings.Split(path, "/")
+		// path.Clean removes double slashes and trailing slashes
+		p := path.Clean(r.URL.Path)
+		p = strings.Trim(p, "/")
+		parts := strings.Split(p, "/")
 
-		// Case: /websites/:id/check
-		if len(parts) == 3 && parts[2] == "check" {
+		// Case: websites/:id/check
+		if len(parts) == 3 && parts[0] == "websites" && parts[2] == "check" {
 			if r.Method != http.MethodPost {
 				writeError(w, http.StatusMethodNotAllowed, "method not allowed")
 				return
@@ -56,8 +59,8 @@ func NewRouter(h *Handler) http.Handler {
 			return
 		}
 
-		// Case: /websites/:id/history
-		if len(parts) == 3 && parts[2] == "history" {
+		// Case: websites/:id/history
+		if len(parts) == 3 && parts[0] == "websites" && parts[2] == "history" {
 			if r.Method != http.MethodGet {
 				writeError(w, http.StatusMethodNotAllowed, "method not allowed")
 				return
@@ -66,8 +69,8 @@ func NewRouter(h *Handler) http.Handler {
 			return
 		}
 
-		// Case: /websites/:id
-		if len(parts) == 2 {
+		// Case: websites/:id
+		if len(parts) == 2 && parts[0] == "websites" {
 			if r.Method != http.MethodGet {
 				writeError(w, http.StatusMethodNotAllowed, "method not allowed")
 				return
