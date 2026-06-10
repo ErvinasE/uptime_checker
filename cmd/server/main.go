@@ -43,7 +43,7 @@ func main() {
 
 	go w.Run(ctx)
 
-	handler := api.NewHandler(s)
+	handler := api.NewHandler(s, chk)
 	server := &http.Server{
 		Addr:              ":" + cfg.AppPort,
 		Handler:           api.NewRouter(handler),

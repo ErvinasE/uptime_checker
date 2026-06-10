@@ -5,18 +5,21 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/ervinas/server_uptime_checker/internal/checker"
 	"github.com/ervinas/server_uptime_checker/internal/store"
 )
 
 // Handler serves HTTP API endpoints.
 type Handler struct {
-	store *store.Store
+	store   *store.Store
+	checker *checker.Checker
 }
 
 // NewHandler creates an API handler backed by the store.
-func NewHandler(s *store.Store) *Handler {
-	return &Handler{store: s}
+func NewHandler(s *store.Store, c *checker.Checker) *Handler {
+	return &Handler{store: s, checker: c}
 }
 
 func (h *Handler) Health(w http.ResponseWriter, r *http.Request) {
@@ -49,6 +52,44 @@ func (h *Handler) GetWebsite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, website)
+}
+
+func (h *Handler) TriggerCheck(w http.ResponseWriter, r *http.Request) {
+	id, err := parseID(r.URL.Path, "/websites/")
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "invalid website id")
+		return
+	}
+
+	website, err := h.store.GetWebsite(id)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			writeError(w, http.StatusNotFound, "website not found")
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "failed to get website")
+		return
+	}
+
+	if website.LastManualCheckAt != nil {
+		if time.Since(*website.LastManualCheckAt) < time.Hour {
+			writeError(w, http.StatusTooManyRequests, "You can only trigger one manual check per hour.")
+			return
+		}
+	}
+
+	result := h.checker.Check(r.Context(), website.URL)
+	if err := h.store.InsertCheck(website.ID, result.Status, result.ResponseTimeMs, result.ErrorMessage); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to save check result")
+		return
+	}
+
+	if err := h.store.UpdateLastManualCheck(website.ID); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to update last manual check timestamp")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{"status": "check triggered", "result": string(result.Status)})
 }
 
 func (h *Handler) GetWebsiteHistory(w http.ResponseWriter, r *http.Request) {

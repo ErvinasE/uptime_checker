@@ -21,7 +21,7 @@ func New(db *sql.DB) *Store {
 // ListWebsites returns all websites with their most recent check.
 func (s *Store) ListWebsites() ([]models.WebsiteWithLatestCheck, error) {
 	rows, err := s.db.Query(`
-		SELECT w.id, w.name, w.url, w.created_at,
+		SELECT w.id, w.name, w.url, w.created_at, w.last_manual_check_at,
 		       c.id, c.status, c.response_time_ms, c.error_message, c.checked_at
 		FROM websites w
 		LEFT JOIN checks c ON c.id = (
@@ -51,7 +51,7 @@ func (s *Store) ListWebsites() ([]models.WebsiteWithLatestCheck, error) {
 // GetWebsite returns one website with its latest check.
 func (s *Store) GetWebsite(id int64) (models.WebsiteWithLatestCheck, error) {
 	row := s.db.QueryRow(`
-		SELECT w.id, w.name, w.url, w.created_at,
+		SELECT w.id, w.name, w.url, w.created_at, w.last_manual_check_at,
 		       c.id, c.status, c.response_time_ms, c.error_message, c.checked_at
 		FROM websites w
 		LEFT JOIN checks c ON c.id = (
@@ -101,7 +101,7 @@ func (s *Store) ListChecks(websiteID int64, hours int) ([]models.Check, error) {
 
 // ListAllWebsites returns basic website rows for the worker.
 func (s *Store) ListAllWebsites() ([]models.Website, error) {
-	rows, err := s.db.Query(`SELECT id, name, url, created_at FROM websites ORDER BY id`)
+	rows, err := s.db.Query(`SELECT id, name, url, created_at, last_manual_check_at FROM websites ORDER BY id`)
 	if err != nil {
 		return nil, fmt.Errorf("list all websites: %w", err)
 	}
@@ -110,8 +110,12 @@ func (s *Store) ListAllWebsites() ([]models.Website, error) {
 	var websites []models.Website
 	for rows.Next() {
 		var w models.Website
-		if err := rows.Scan(&w.ID, &w.Name, &w.URL, &w.CreatedAt); err != nil {
+		var lastManualCheck sql.NullTime
+		if err := rows.Scan(&w.ID, &w.Name, &w.URL, &w.CreatedAt, &lastManualCheck); err != nil {
 			return nil, err
+		}
+		if lastManualCheck.Valid {
+			w.LastManualCheckAt = &lastManualCheck.Time
 		}
 		websites = append(websites, w)
 	}
@@ -174,6 +178,12 @@ func (s *Store) DeleteOldChecks(retentionDays int) error {
 	return err
 }
 
+// UpdateLastManualCheck updates the timestamp of the last manual probe.
+func (s *Store) UpdateLastManualCheck(id int64) error {
+	_, err := s.db.Exec(`UPDATE websites SET last_manual_check_at = NOW() WHERE id = ?`, id)
+	return err
+}
+
 func openIncident(tx *sql.Tx, websiteID int64) error {
 	_, err := tx.Exec(`
 		INSERT INTO incidents (website_id, started_at)
@@ -202,13 +212,18 @@ func scanWebsiteWithCheck(row scannable) (models.WebsiteWithLatestCheck, error) 
 	var responseTime sql.NullInt64
 	var errorMessage sql.NullString
 	var checkedAt sql.NullTime
+	var lastManualCheck sql.NullTime
 
 	err := row.Scan(
-		&item.ID, &item.Name, &item.URL, &item.CreatedAt,
+		&item.ID, &item.Name, &item.URL, &item.CreatedAt, &lastManualCheck,
 		&checkID, &status, &responseTime, &errorMessage, &checkedAt,
 	)
 	if err != nil {
 		return item, err
+	}
+
+	if lastManualCheck.Valid {
+		item.LastManualCheckAt = &lastManualCheck.Time
 	}
 
 	if checkID.Valid {

@@ -24,13 +24,18 @@ export interface Website {
   name: string;
   url: string;
   created_at: string;
+  last_manual_check_at?: string | null;
   latest_check?: Check | null;
 }
 
-async function fetchJSON<T>(path: string): Promise<T> {
-  const res = await fetch(`${getApiUrl()}${path}`, { cache: "no-store" });
+async function fetchJSON<T>(path: string, options?: RequestInit): Promise<T> {
+  const res = await fetch(`${getApiUrl()}${path}`, {
+    cache: "no-store",
+    ...options,
+  });
   if (!res.ok) {
-    throw new Error(`API error: ${res.status}`);
+    const errorBody = await res.json().catch(() => ({}));
+    throw new Error(errorBody.error || `API error: ${res.status}`);
   }
   return res.json() as Promise<T>;
 }
@@ -45,6 +50,14 @@ export function getWebsite(id: string): Promise<Website> {
 
 export function getWebsiteHistory(id: string, hours = 24): Promise<Check[]> {
   return fetchJSON<Check[]>(`/websites/${id}/history?hours=${hours}`);
+}
+
+export function triggerCheck(id: number): Promise<{ status: string; result: string }> {
+  // Use relative URL when called from browser to use the Next.js proxy
+  const baseUrl = typeof window !== "undefined" ? "/api" : getApiUrl();
+  return fetchJSON<{ status: string; result: string }>(`${baseUrl}/websites/${id}/check`, {
+    method: "POST",
+  });
 }
 
 export function calcUptimePercent(checks: Check[]): number {
