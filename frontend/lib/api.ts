@@ -29,7 +29,9 @@ export interface Website {
 }
 
 async function fetchJSON<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${getApiUrl()}${path}`, {
+  const isBrowser = typeof window !== "undefined";
+  const baseUrl = isBrowser ? "/api" : getApiUrl();
+  const res = await fetch(`${baseUrl}${path}`, {
     cache: "no-store",
     ...options,
   });
