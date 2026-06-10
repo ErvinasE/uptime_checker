@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { calcUptimePercent, getWebsite, getWebsiteHistory } from "@/lib/api";
 import { HistoryTable } from "@/components/HistoryTable";
 import { StatusBadge } from "@/components/StatusBadge";
+import { CheckNowButton } from "@/components/CheckNowButton";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -44,9 +45,17 @@ export default async function WebsiteDetailPage({ params }: PageProps) {
           <div className="stat-label">24h Uptime</div>
           <div className="stat-value">{uptime}%</div>
         </div>
-        <div className="stat">
-          <div className="stat-label">Checks (24h)</div>
-          <div className="stat-value">{checks.length}</div>
+        <div className="stat" style={{ minWidth: '250px' }}>
+          <div className="stat-header">
+            <div>
+              <div className="stat-label">Checks (24h)</div>
+              <div className="stat-value">{checks.length}</div>
+            </div>
+            <CheckNowButton 
+              websiteId={website.id} 
+              lastManualCheckAt={website.last_manual_check_at} 
+            />
+          </div>
         </div>
         {website.latest_check?.response_time_ms != null && (
           <div className="stat">

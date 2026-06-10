@@ -8,6 +8,7 @@ type Website struct {
 	Name      string    `json:"name"`
 	URL       string    `json:"url"`
 	CreatedAt time.Time `json:"created_at"`
+	LastManualCheckAt *time.Time `json:"last_manual_check_at,omitempty"`
 }
 
 // CheckStatus is the result of a single probe.

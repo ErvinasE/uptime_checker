@@ -9,7 +9,10 @@ async function proxy(request: NextRequest, path: string[]) {
 
   const res = await fetch(target, {
     method: request.method,
-    headers: { Accept: "application/json" },
+    headers: { 
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
     cache: "no-store",
   });
 
@@ -21,6 +24,14 @@ async function proxy(request: NextRequest, path: string[]) {
 }
 
 export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ path: string[] }> }
+) {
+  const { path } = await context.params;
+  return proxy(request, path);
+}
+
+export async function POST(
   request: NextRequest,
   context: { params: Promise<{ path: string[] }> }
 ) {
