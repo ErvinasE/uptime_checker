@@ -55,7 +55,8 @@ func (h *Handler) GetWebsite(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) TriggerCheck(w http.ResponseWriter, r *http.Request) {
-	path := strings.TrimPrefix(r.URL.Path, "/websites/")
+	path := strings.TrimSuffix(r.URL.Path, "/")
+	path = strings.TrimPrefix(path, "/websites/")
 	path = strings.TrimSuffix(path, "/check")
 	id, err := strconv.ParseInt(strings.Trim(path, "/"), 10, 64)
 	if err != nil || id < 1 {
@@ -95,7 +96,8 @@ func (h *Handler) TriggerCheck(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetWebsiteHistory(w http.ResponseWriter, r *http.Request) {
-	path := strings.TrimPrefix(r.URL.Path, "/websites/")
+	path := strings.TrimSuffix(r.URL.Path, "/")
+	path = strings.TrimPrefix(path, "/websites/")
 	path = strings.TrimSuffix(path, "/history")
 	id, err := strconv.ParseInt(strings.Trim(path, "/"), 10, 64)
 	if err != nil || id < 1 {

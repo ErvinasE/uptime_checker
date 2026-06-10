@@ -34,7 +34,8 @@ func NewRouter(h *Handler) http.Handler {
 		h.ListWebsites(w, r)
 	})
 	mux.HandleFunc("/websites/", func(w http.ResponseWriter, r *http.Request) {
-		if strings.HasSuffix(r.URL.Path, "/check") {
+		path := strings.TrimSuffix(r.URL.Path, "/")
+		if strings.HasSuffix(path, "/check") {
 			if r.Method != http.MethodPost {
 				writeError(w, http.StatusMethodNotAllowed, "method not allowed")
 				return
@@ -48,7 +49,7 @@ func NewRouter(h *Handler) http.Handler {
 			return
 		}
 
-		if strings.HasSuffix(r.URL.Path, "/history") {
+		if strings.HasSuffix(path, "/history") {
 			h.GetWebsiteHistory(w, r)
 			return
 		}
