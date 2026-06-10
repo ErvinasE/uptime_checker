@@ -53,9 +53,7 @@ export function getWebsiteHistory(id: string, hours = 24): Promise<Check[]> {
 }
 
 export function triggerCheck(id: number): Promise<{ status: string; result: string }> {
-  // Use relative URL when called from browser to use the Next.js proxy
-  const baseUrl = typeof window !== "undefined" ? "/api" : getApiUrl();
-  return fetchJSON<{ status: string; result: string }>(`${baseUrl}/websites/${id}/check`, {
+  return fetchJSON<{ status: string; result: string }>(`/websites/${id}/check`, {
     method: "POST",
   });
 }
