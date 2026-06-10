@@ -1,9 +1,18 @@
 package api
 
 import (
+	"log"
 	"net/http"
 	"strings"
 )
+
+// loggerMiddleware logs incoming requests for debugging.
+func loggerMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("%s %s %s", r.RemoteAddr, r.Method, r.URL.Path)
+		next.ServeHTTP(w, r)
+	})
+}
 
 // corsMiddleware allows the Next.js frontend to call the API from the browser.
 func corsMiddleware(next http.Handler) http.Handler {
@@ -34,8 +43,11 @@ func NewRouter(h *Handler) http.Handler {
 		h.ListWebsites(w, r)
 	})
 	mux.HandleFunc("/websites/", func(w http.ResponseWriter, r *http.Request) {
-		path := strings.TrimSuffix(r.URL.Path, "/")
-		if strings.HasSuffix(path, "/check") {
+		path := strings.Trim(r.URL.Path, "/")
+		parts := strings.Split(path, "/")
+
+		// Case: /websites/:id/check
+		if len(parts) == 3 && parts[2] == "check" {
 			if r.Method != http.MethodPost {
 				writeError(w, http.StatusMethodNotAllowed, "method not allowed")
 				return
@@ -44,18 +56,28 @@ func NewRouter(h *Handler) http.Handler {
 			return
 		}
 
-		if r.Method != http.MethodGet {
-			writeError(w, http.StatusMethodNotAllowed, "method not allowed")
-			return
-		}
-
-		if strings.HasSuffix(path, "/history") {
+		// Case: /websites/:id/history
+		if len(parts) == 3 && parts[2] == "history" {
+			if r.Method != http.MethodGet {
+				writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+				return
+			}
 			h.GetWebsiteHistory(w, r)
 			return
 		}
 
-		h.GetWebsite(w, r)
+		// Case: /websites/:id
+		if len(parts) == 2 {
+			if r.Method != http.MethodGet {
+				writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+				return
+			}
+			h.GetWebsite(w, r)
+			return
+		}
+
+		writeError(w, http.StatusNotFound, "not found")
 	})
 
-	return corsMiddleware(mux)
+	return loggerMiddleware(corsMiddleware(mux))
 }
