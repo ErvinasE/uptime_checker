@@ -12,6 +12,7 @@ interface CheckNowButtonProps {
 export function CheckNowButton({ websiteId, lastManualCheckAt }: CheckNowButtonProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const router = useRouter();
 
@@ -22,7 +23,9 @@ export function CheckNowButton({ websiteId, lastManualCheckAt }: CheckNowButtonP
     }
 
     const updateTimer = () => {
-      const lastCheck = new Date(lastManualCheckAt).getTime();
+      // Ensure we parse the timestamp as UTC
+      const lastCheckStr = lastManualCheckAt.endsWith("Z") ? lastManualCheckAt : `${lastManualCheckAt}Z`;
+      const lastCheck = new Date(lastCheckStr).getTime();
       const nextAvailable = lastCheck + 60 * 60 * 1000;
       const now = new Date().getTime();
       const diff = Math.max(0, Math.ceil((nextAvailable - now) / 1000));
@@ -37,12 +40,15 @@ export function CheckNowButton({ websiteId, lastManualCheckAt }: CheckNowButtonP
   const handleCheck = async () => {
     setLoading(true);
     setError(null);
+    setSuccess(false);
     try {
       await triggerCheck(websiteId);
+      setSuccess(true);
       router.refresh();
+      // Clear success message after 5 seconds
+      setTimeout(() => setSuccess(false), 5000);
     } catch (err: any) {
       setError(err.message || "Failed to trigger check");
-      // Refresh anyway in case the error was a rate limit we didn't know about
       router.refresh();
     } finally {
       setLoading(false);
@@ -65,6 +71,7 @@ export function CheckNowButton({ websiteId, lastManualCheckAt }: CheckNowButtonP
         {loading ? "Checking..." : timeLeft > 0 ? `Check available in ${formatTimeLeft(timeLeft)}` : "Check Now"}
       </button>
       {error && <span style={{ fontSize: "0.75rem", color: "var(--down)" }}>{error}</span>}
+      {success && <span style={{ fontSize: "0.75rem", color: "var(--up)" }}>Check triggered successfully! Refreshing...</span>}
     </div>
   );
 }

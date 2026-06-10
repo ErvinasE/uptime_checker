@@ -132,7 +132,7 @@ func (s *Store) InsertCheck(websiteID int64, result models.CheckStatus, response
 
 	if _, err := tx.Exec(`
 		INSERT INTO checks (website_id, status, response_time_ms, error_message, checked_at)
-		VALUES (?, ?, ?, ?, NOW())
+		VALUES (?, ?, ?, ?, UTC_TIMESTAMP())
 	`, websiteID, result, responseTimeMs, errorMessage); err != nil {
 		return fmt.Errorf("insert check: %w", err)
 	}
@@ -173,21 +173,21 @@ func (s *Store) InsertCheck(websiteID int64, result models.CheckStatus, response
 
 // DeleteOldChecks removes checks older than the retention period.
 func (s *Store) DeleteOldChecks(retentionDays int) error {
-	cutoff := time.Now().Add(-time.Duration(retentionDays) * 24 * time.Hour)
+	cutoff := time.Now().UTC().Add(-time.Duration(retentionDays) * 24 * time.Hour)
 	_, err := s.db.Exec(`DELETE FROM checks WHERE checked_at < ?`, cutoff)
 	return err
 }
 
 // UpdateLastManualCheck updates the timestamp of the last manual probe.
 func (s *Store) UpdateLastManualCheck(id int64) error {
-	_, err := s.db.Exec(`UPDATE websites SET last_manual_check_at = NOW() WHERE id = ?`, id)
+	_, err := s.db.Exec(`UPDATE websites SET last_manual_check_at = UTC_TIMESTAMP() WHERE id = ?`, id)
 	return err
 }
 
 func openIncident(tx *sql.Tx, websiteID int64) error {
 	_, err := tx.Exec(`
 		INSERT INTO incidents (website_id, started_at)
-		VALUES (?, NOW())
+		VALUES (?, UTC_TIMESTAMP())
 	`, websiteID)
 	return err
 }
@@ -195,7 +195,7 @@ func openIncident(tx *sql.Tx, websiteID int64) error {
 func closeIncident(tx *sql.Tx, websiteID int64) error {
 	_, err := tx.Exec(`
 		UPDATE incidents
-		SET ended_at = NOW()
+		SET ended_at = UTC_TIMESTAMP()
 		WHERE website_id = ? AND ended_at IS NULL
 	`, websiteID)
 	return err
