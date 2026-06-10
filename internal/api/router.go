@@ -36,18 +36,23 @@ func NewRouter(h *Handler) http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/health", h.Health)
-	mux.HandleFunc("/websites", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			writeError(w, http.StatusMethodNotAllowed, "method not allowed")
-			return
-		}
-		h.ListWebsites(w, r)
-	})
-	mux.HandleFunc("/websites/", func(w http.ResponseWriter, r *http.Request) {
+	
+	// Handle everything else under /websites
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		// path.Clean removes double slashes and trailing slashes
 		p := path.Clean(r.URL.Path)
 		p = strings.Trim(p, "/")
 		parts := strings.Split(p, "/")
+
+		// Case: GET /websites
+		if len(parts) == 1 && parts[0] == "websites" {
+			if r.Method != http.MethodGet {
+				writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+				return
+			}
+			h.ListWebsites(w, r)
+			return
+		}
 
 		// Case: websites/:id/check
 		if len(parts) == 3 && parts[0] == "websites" && parts[2] == "check" {
@@ -76,6 +81,12 @@ func NewRouter(h *Handler) http.Handler {
 				return
 			}
 			h.GetWebsite(w, r)
+			return
+		}
+
+		// Default for anything else
+		if p == "health" {
+			h.Health(w, r)
 			return
 		}
 
