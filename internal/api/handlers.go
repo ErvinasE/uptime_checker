@@ -55,8 +55,10 @@ func (h *Handler) GetWebsite(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) TriggerCheck(w http.ResponseWriter, r *http.Request) {
-	id, err := parseID(r.URL.Path, "/websites/")
-	if err != nil {
+	path := strings.TrimPrefix(r.URL.Path, "/websites/")
+	path = strings.TrimSuffix(path, "/check")
+	id, err := strconv.ParseInt(strings.Trim(path, "/"), 10, 64)
+	if err != nil || id < 1 {
 		writeError(w, http.StatusBadRequest, "invalid website id")
 		return
 	}
